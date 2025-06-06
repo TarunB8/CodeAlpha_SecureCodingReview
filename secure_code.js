@@ -1,44 +1,47 @@
 const express = require('express');
 const app = express();
-const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 
-app.use(helmet()); // ✅ Set security headers
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(express.json()); // Use express's inbuilt JSON parser
+app.use(helmet());
 
-// ✅ Simulated database with hashed password
+// ✅ Correct hash for "admin123"
 const users = [
   {
     username: 'admin',
-    password: '$2b$10$JqgW79p7FSxFZgSGZBeqdeD0EpB3xw4T.4BqpUz19sKpxI7DIFOSW' // hashed version of 'admin123'
+    password: '$2a$15$TrQc8ycOrcaZwYLkTHlIyOOZME4sb3A1qCtqj1TbKUPdidTAq2ZaS'
+
   }
 ];
 
-// ✅ Login Route with validation
 app.post('/login',
   [
-    body('username').isLength({ min: 3 }).trim().escape(),
-    body('password').isLength({ min: 5 }).trim()
+    body('username').notEmpty().trim().escape(),
+    body('password').notEmpty().trim()
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation failed:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { username, password } = req.body;
+    console.log(`🛂 Received: ${username}, ${password}`);
 
     const user = users.find(u => u.username === username);
     if (!user) {
+      console.log('❌ User not found');
       return res.status(401).send('Invalid credentials');
     }
 
-    // ✅ Compare hashed passwords
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('🔐 Bcrypt compare result:', isMatch);
+
     if (!isMatch) {
+      console.log('❌ Password mismatch');
       return res.status(401).send('Invalid credentials');
     }
 
@@ -47,5 +50,5 @@ app.post('/login',
 );
 
 app.listen(3000, () => {
-  console.log('🔒 Secure server running at http://localhost:3000');
+  console.log('🔒 Server running at http://localhost:3000');
 });
